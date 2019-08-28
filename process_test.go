@@ -18,8 +18,9 @@ func TestProcess(t *testing.T) {
 	}
 
 	jsonCh := loadFromJson(jsonResults)
+
 	//from json
-	structResults, err := Process(jsonCh, process, 5)
+	structResults, err := Process(jsonCh, fromJson, 5)
 	if err != nil {
 		panic(err)
 	}
@@ -38,6 +39,13 @@ func TestProcess(t *testing.T) {
 func process(obj interface{}) (interface{}, error) {
 	return json.Marshal(obj)
 }
+func fromJson(obj interface{}) (interface{}, error) {
+	n := NumberHolder{}
+	if err := json.Unmarshal(obj.([]byte), &n); err != nil {
+		return nil, err
+	}
+	return &n, nil
+}
 
 type NumberHolder struct {
 	Age int `json:"age"`
@@ -47,12 +55,7 @@ func loadFromJson(results []interface{}) chan interface{} {
 	maxNum := 1000
 	ch := make(chan interface{}, maxNum)
 	for i := 0; i < maxNum; i++ {
-		var a NumberHolder
-		if err := json.Unmarshal(results[i].([]byte), &a); err != nil {
-			panic(err)
-		}
-
-		ch <- &a
+		ch <- results[i]
 	}
 	close(ch)
 	return ch
