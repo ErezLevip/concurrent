@@ -36,6 +36,31 @@ func TestProcess(t *testing.T) {
 	assert.True(t, match, "results dont match the original stage")
 }
 
+func TestProcessSlice(t *testing.T) {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	inputsSlice := loadToStuctSlice()
+
+	//to json
+	jsonResults, err := ProcessSlice(inputsSlice, process, 5)
+	if err != nil {
+		panic(err)
+	}
+
+	//from json
+	structResults, err := ProcessSlice(jsonResults, fromJson, 5)
+	if err != nil {
+		panic(err)
+	}
+	match := true
+	for i, v := range inputsSlice {
+		if structResults[i].(*NumberHolder).Age != v.(*NumberHolder).Age {
+			match = false
+			break
+		}
+	}
+	assert.True(t, match, "results dont match the original stage")
+}
+
 func process(obj interface{}) (interface{}, error) {
 	return json.Marshal(obj)
 }
@@ -61,7 +86,6 @@ func loadFromJson(results []interface{}) chan interface{} {
 	return ch
 }
 func loadToStuct() chan interface{} {
-
 	maxNum := 1000
 	ch := make(chan interface{}, maxNum)
 	for i := 0; i < maxNum; i++ {
@@ -69,4 +93,12 @@ func loadToStuct() chan interface{} {
 	}
 	close(ch)
 	return ch
+}
+func loadToStuctSlice() []interface{} {
+	maxNum := 1000
+	s := make([]interface{}, maxNum)
+	for i := 0; i < maxNum; i++ {
+		s[i] = &NumberHolder{Age: i}
+	}
+	return s
 }

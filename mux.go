@@ -48,16 +48,16 @@ func (m *mux) getInputChan() chan *item {
 	return w.in
 }
 
-func (m *mux) fanOut() ([]interface{}, error) {
+func (m *mux) fanOut() error {
 	for _, w := range m.workers {
 		w.startWorker(m.wg, m.limit, m.process, m.continueOnError)
 	}
 	m.wg.Wait()
 
 	if err := m.checkErrors(); err != nil {
-		return nil, err
+		return err
 	}
-	return m.aggregateResults(), nil
+	return nil
 }
 
 func newWorker(limit int) *worker {
@@ -106,7 +106,7 @@ func (m *mux) closeAllInputChannels() {
 
 }
 
-func (m *mux) aggregateResults() []interface{} {
+func (m *mux) fanIn() []interface{} {
 	results := make([]interface{}, m.countItems())
 	i := 0
 	for _, w := range m.workers {
