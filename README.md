@@ -7,7 +7,7 @@ go get -u "github.com/erezlevip/concurrent"
 
 ## Quick Start
 
-create a processing function and select a limit.
+create a processing function and call Process with a channel of the objects that needs to be processed, the processing function and the limit per goroutine.
 
 pass Channel:
 ```go
