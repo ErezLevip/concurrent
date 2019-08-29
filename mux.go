@@ -111,7 +111,7 @@ func (m *mux) fanIn() []interface{} {
 	i := 0
 	for _, w := range m.workers {
 		for v := range w.out {
-			results[i] = v.value
+			results[v.index] = v.value
 			i++
 		}
 	}

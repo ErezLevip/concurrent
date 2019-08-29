@@ -1,6 +1,6 @@
 # Concurrent
 
-concurrent is a simple library for concurrent processing.
+concurrent is a simple library for concurrent processing while keeping the original order.
 
 ## Installation
 go get -u "github.com/erezlevip/concurrent"
