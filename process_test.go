@@ -26,7 +26,7 @@ func TestProcess(t *testing.T) {
 	}
 	match := true
 	i := 0
-	for v := range inputsCh {
+	for v := range loadToStuct() {
 		if structResults[i].(*NumberHolder).Age != v.(*NumberHolder).Age {
 			match = false
 			break
@@ -52,7 +52,7 @@ func TestProcessSlice(t *testing.T) {
 		panic(err)
 	}
 	match := true
-	for i, v := range inputsSlice {
+	for i, v := range loadToStuctSlice() {
 		if structResults[i].(*NumberHolder).Age != v.(*NumberHolder).Age {
 			match = false
 			break
