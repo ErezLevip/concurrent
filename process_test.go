@@ -9,7 +9,8 @@ import (
 
 func TestProcess(t *testing.T) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	inputsCh := loadToStuct()
+	maxIndexSize := 1000
+	inputsCh := loadToStuct(maxIndexSize)
 
 	//to json
 	jsonResults, err := Process(inputsCh, process, 5)
@@ -17,7 +18,7 @@ func TestProcess(t *testing.T) {
 		panic(err)
 	}
 
-	jsonCh := loadFromJson(jsonResults)
+	jsonCh := loadFromJson(jsonResults,maxIndexSize)
 
 	//from json
 	structResults, err := Process(jsonCh, fromJson, 5)
@@ -26,7 +27,7 @@ func TestProcess(t *testing.T) {
 	}
 	match := true
 	i := 0
-	for v := range loadToStuct() {
+	for v := range loadToStuct(maxIndexSize) {
 		if structResults[i].(*NumberHolder).Age != v.(*NumberHolder).Age {
 			match = false
 			break
@@ -38,7 +39,8 @@ func TestProcess(t *testing.T) {
 
 func TestProcessSlice(t *testing.T) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	inputsSlice := loadToStuctSlice()
+	maxIndexSize := 1000
+	inputsSlice := loadToStuctSlice(maxIndexSize)
 
 	//to json
 	jsonResults, err := ProcessSlice(inputsSlice, process, 5)
@@ -52,7 +54,7 @@ func TestProcessSlice(t *testing.T) {
 		panic(err)
 	}
 	match := true
-	for i, v := range loadToStuctSlice() {
+	for i, v := range loadToStuctSlice(maxIndexSize) {
 		if structResults[i].(*NumberHolder).Age != v.(*NumberHolder).Age {
 			match = false
 			break
@@ -76,8 +78,7 @@ type NumberHolder struct {
 	Age int `json:"age"`
 }
 
-func loadFromJson(results []interface{}) chan interface{} {
-	maxNum := 1000
+func loadFromJson(results []interface{},maxNum int) chan interface{} {
 	ch := make(chan interface{}, maxNum)
 	for i := 0; i < maxNum; i++ {
 		ch <- results[i]
@@ -85,8 +86,7 @@ func loadFromJson(results []interface{}) chan interface{} {
 	close(ch)
 	return ch
 }
-func loadToStuct() chan interface{} {
-	maxNum := 1000
+func loadToStuct(maxNum int) chan interface{} {
 	ch := make(chan interface{}, maxNum)
 	for i := 0; i < maxNum; i++ {
 		ch <- &NumberHolder{Age: i}
@@ -94,8 +94,7 @@ func loadToStuct() chan interface{} {
 	close(ch)
 	return ch
 }
-func loadToStuctSlice() []interface{} {
-	maxNum := 1000
+func loadToStuctSlice(maxNum int) []interface{} {
 	s := make([]interface{}, maxNum)
 	for i := 0; i < maxNum; i++ {
 		s[i] = &NumberHolder{Age: i}
