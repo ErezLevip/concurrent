@@ -1,6 +1,8 @@
 package concurrent
 
-import "errors"
+import (
+	"errors"
+)
 
 type processFunc func(interface{}) (interface{}, error)
 
@@ -10,8 +12,10 @@ func Process(input <-chan interface{}, process processFunc, limit int) ([]interf
 	}
 
 	mux := newMux(limit, true, process)
-	prepareFanOutFromChannel(mux, input)
-	if err := mux.fanOut(); err != nil {
+	go fanOut(mux, input)
+
+	mux.waitAll()
+	if err := mux.errors(); err != nil {
 		return nil, err
 	}
 	return mux.fanIn(), nil
@@ -20,10 +24,10 @@ func ProcessSlice(input []interface{}, process processFunc, limit int) ([]interf
 	if err := validate(input, process, limit); err != nil {
 		return nil, err
 	}
-
 	mux := newMux(limit, true, process)
-	prepareFanOutFromSlice(mux, input)
-	if err := mux.fanOut(); err != nil {
+	go fanOutSlice(mux, input)
+	mux.waitAll()
+	if err := mux.errors(); err != nil {
 		return nil, err
 	}
 	return mux.fanIn(), nil
@@ -36,23 +40,25 @@ func validate(input interface{}, process processFunc, limit int) error {
 	if process == nil {
 		return errors.New("process func cant be nill")
 	}
-	if limit == 0 {
+	if limit <= 0 {
 		return errors.New("limit must be greater than 0")
 	}
 	return nil
 }
 
-func prepareFanOutFromChannel(mux *mux, input <-chan interface{}) {
+func fanOut(mux *mux, input <-chan interface{}) {
+	defer mux.wg.Done()
+	mux.wg.Add(1)
 	i := 0
 	for v := range input {
-		mux.getInputChan() <- &item{value: v, index: i}
+		mux.getWorker().add(&item{value: v, index: i})
 		i++
 	}
 	mux.closeAllInputChannels()
 }
-func prepareFanOutFromSlice(mux *mux, input []interface{}) {
+func fanOutSlice(mux *mux, input []interface{}) {
 	for i, v := range input {
-		mux.getInputChan() <- &item{value: v, index: i}
+		mux.getWorker().add(&item{value: v, index: i})
 	}
 	mux.closeAllInputChannels()
 }

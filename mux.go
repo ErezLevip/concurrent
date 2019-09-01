@@ -13,61 +13,48 @@ type mux struct {
 	process         processFunc
 }
 
-type worker struct {
-	in      chan *item
-	out     chan *item
-	errChan chan error
-}
-
 type item struct {
 	index int
 	value interface{}
 }
 
 func newMux(limit int, continueOnError bool, process processFunc) *mux {
-	return &mux{
-		workers:         [] *worker{},
+	m := &mux{
+		workers:         []*worker{},
 		limit:           limit,
 		m:               &sync.Mutex{},
 		wg:              &sync.WaitGroup{},
 		continueOnError: continueOnError,
 		process:         process,
 	}
-}
 
-func (m *mux) getInputChan() chan *item {
-	for _, c := range m.workers {
-		if m.limit > len(c.in) {
-			return c.in
-		}
-	}
-	w := newWorker(m.limit)
+	//the mux will always start with 1 worker that will create and hold the first channel
+	m.addWorker()
+	return m
+}
+func (m *mux) addWorker() *worker {
+	w := newWorker()
 	m.m.Lock()
 	defer m.m.Unlock()
 	m.workers = append(m.workers, w)
-	return w.in
+	w.run(m.wg, m.limit, m.process, m.continueOnError)
+	return w
 }
 
-func (m *mux) fanOut() error {
+func (m *mux) getWorker() *worker {
 	for _, w := range m.workers {
-		w.startWorker(m.wg, m.limit, m.process, m.continueOnError)
+		if m.limit > w.count {
+			return w
+		}
 	}
+	return m.addWorker()
+}
+
+func (m *mux) waitAll() {
 	m.wg.Wait()
-
-	if err := m.checkErrors(); err != nil {
-		return err
-	}
-	return nil
 }
 
-func newWorker(limit int) *worker {
-	return &worker{
-		in:      make(chan *item, limit),
-		errChan: make(chan error, 1),
-	}
-}
-
-func (w *worker) startWorker(wg *sync.WaitGroup, limit int, process processFunc, continueOnError bool) {
+func (w *worker) run(wg *sync.WaitGroup, limit int, process processFunc, continueOnError bool) {
 	w.out = make(chan *item, limit)
 	wg.Add(1)
 	go func() {
@@ -88,7 +75,7 @@ func (w *worker) startWorker(wg *sync.WaitGroup, limit int, process processFunc,
 		}
 	}()
 }
-func (m *mux) checkErrors() error {
+func (m *mux) errors() error {
 	for _, w := range m.workers {
 		for err := range w.errChan {
 			if err != nil {
