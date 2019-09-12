@@ -1,7 +1,10 @@
 package concurrent
 
 import (
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 type mux struct {
@@ -11,6 +14,7 @@ type mux struct {
 	wg              *sync.WaitGroup
 	continueOnError bool
 	process         processFunc
+	kill            chan os.Signal
 }
 
 type item struct {
@@ -19,6 +23,8 @@ type item struct {
 }
 
 func newMux(limit int, continueOnError bool, process processFunc) *mux {
+	kill := make(chan os.Signal, 1)
+	signal.Notify(kill, os.Interrupt, syscall.SIGKILL, syscall.SIGTERM)
 	m := &mux{
 		workers:         []*worker{},
 		limit:           limit,
@@ -26,6 +32,7 @@ func newMux(limit int, continueOnError bool, process processFunc) *mux {
 		wg:              &sync.WaitGroup{},
 		continueOnError: continueOnError,
 		process:         process,
+		kill:            kill,
 	}
 
 	//the mux will always start with 1 worker that will create and hold the first channel
@@ -54,27 +61,6 @@ func (m *mux) waitAll() {
 	m.wg.Wait()
 }
 
-func (w *worker) run(wg *sync.WaitGroup, limit int, process processFunc, continueOnError bool) {
-	w.out = make(chan *item, limit)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer close(w.out)
-		defer close(w.errChan)
-		for raw := range w.in {
-			v, err := process(raw.value)
-			if err != nil {
-				if continueOnError {
-					continue
-				}
-				w.errChan <- err
-				return
-			}
-			raw.value = v
-			w.out <- raw
-		}
-	}()
-}
 func (m *mux) errors() error {
 	for _, w := range m.workers {
 		for err := range w.errChan {
@@ -91,6 +77,27 @@ func (m *mux) closeAllInputChannels() {
 		close(w.in)
 	}
 
+}
+
+func (m *mux) fanOut(input <-chan interface{}) {
+	defer m.wg.Done()
+	defer m.closeAllInputChannels()
+
+	m.wg.Add(1)
+	i := 0
+
+	for {
+		select {
+		case v, canRead := <-input:
+			if !canRead {
+				return
+			}
+			m.getWorker().add(&item{value: v, index: i})
+			i++
+		case <-m.kill:
+			return
+		}
+	}
 }
 
 func (m *mux) fanIn() []interface{} {

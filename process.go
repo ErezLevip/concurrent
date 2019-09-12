@@ -12,7 +12,7 @@ func Process(input <-chan interface{}, process processFunc, limit int) ([]interf
 	}
 
 	mux := newMux(limit, true, process)
-	go fanOut(mux, input)
+	go mux.fanOut(input)
 
 	mux.waitAll()
 	if err := mux.errors(); err != nil {
@@ -46,16 +46,6 @@ func validate(input interface{}, process processFunc, limit int) error {
 	return nil
 }
 
-func fanOut(mux *mux, input <-chan interface{}) {
-	defer mux.wg.Done()
-	mux.wg.Add(1)
-	i := 0
-	for v := range input {
-		mux.getWorker().add(&item{value: v, index: i})
-		i++
-	}
-	mux.closeAllInputChannels()
-}
 func fanOutSlice(mux *mux, input []interface{}) {
 	for i, v := range input {
 		mux.getWorker().add(&item{value: v, index: i})

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"runtime"
 	"testing"
+	"time"
 )
 
 func TestProcess(t *testing.T) {
@@ -82,6 +83,7 @@ func TestProcessSlice(t *testing.T) {
 }
 
 func process(obj interface{}) (interface{}, error) {
+	time.Sleep(300* time.Millisecond)
 	return json.Marshal(obj)
 }
 func fromJson(obj interface{}) (interface{}, error) {
