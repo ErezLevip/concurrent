@@ -6,6 +6,12 @@ import (
 
 type processFunc func(interface{}) (interface{}, error)
 
+const (
+	NillInputErr       = "input cant be nill"
+	NillProcessFuncErr = "process func cant be nill"
+	ZeroLimitErr       = "limit must be greater than 0"
+)
+
 func Process(input <-chan interface{}, process processFunc, limit int) ([]interface{}, error) {
 	if err := validate(input, process, limit); err != nil {
 		return nil, err
@@ -35,13 +41,13 @@ func ProcessSlice(input []interface{}, process processFunc, limit int) ([]interf
 
 func validate(input interface{}, process processFunc, limit int) error {
 	if input == nil {
-		return errors.New("input cant be nill")
+		return errors.New(NillInputErr)
 	}
 	if process == nil {
-		return errors.New("process func cant be nill")
+		return errors.New(NillProcessFuncErr)
 	}
 	if limit <= 0 {
-		return errors.New("limit must be greater than 0")
+		return errors.New(ZeroLimitErr)
 	}
 	return nil
 }
